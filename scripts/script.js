@@ -20,9 +20,9 @@ const gridInc = 0.12;
 const numOfSwitches = 2;
 const numOfBlocks = 10;
 const numOfPlatforms = 10;
-const blockSlotInc = 0.075;
-const blockInitY = 0.5;
-const initBlockSlot = 0.28;
+const blockSlotInc = 0.1;
+const blockInitY = 0.9;
+const initBlockSlot = 0.6;
 const states = { start: 1, running: 2, complete: 3, failed: 4, uncomplete: 5 };
 
 let currentLevel = 0;
@@ -98,7 +98,7 @@ TouchGestures.onTap(buttons.child("btnLoop4")).subscribe(function() {
   }
 });
 
-TouchGestures.onTap(buttons.child("btnUndo")).subscribe(function() {
+TouchGestures.onTap(blocks.child("btnUndo")).subscribe(function() {
   if (blocksUsed !== 0 && currentState === states.start) {
     let popped = commands.pop();
     popped.block.transform.y = blockInitY;
@@ -145,6 +145,7 @@ Reactive.monitorMany({
   let goalZ = path[path.length - 1][1];
   let obstacleCoords = levels[currentLevel].obstacle;
   let zoneArea = 0.005;
+  let maxBlocks = levels[currentLevel].blocks;
 
   // check if player is on the goal
   if (
@@ -158,6 +159,10 @@ Reactive.monitorMany({
     Time.clearInterval(exeIntervalID);
     currentState = states.complete;
     buttons.child("btnRun").material = Materials.get("forwardBlock");
+
+    if (blocksUsed > maxBlocks) {
+      Diagnostics.log("You can also solve this with " + maxBlocks + " blocks.");
+    }
   }
 
   // check if player is on a danger zone
@@ -311,17 +316,14 @@ initLevel();
 /*------------- Add Command -------------*/
 
 function addCommand(move) {
-  let maxBlocks = levels[currentLevel].blocks;
   if (currentState === states.start) {
-    if (blocksUsed < maxBlocks) {
+    if (blocksUsed < numOfBlocks) {
       let block = blocks.child("block" + blocksUsed++);
       nextBlockSlot -= blockSlotInc;
       block.transform.y = nextBlockSlot;
       block.material = Materials.get(move + "Block");
       block.hidden = false;
       commands.push({ command: move, block: block });
-    } else {
-      Diagnostics.log("Solve this problem with " + maxBlocks + " blocks");
     }
   }
 }
@@ -570,13 +572,13 @@ function nextLevel() {
 
   if ("obstacle" in levels[currentLevel] === false) {
     obstacle.transform.x = 0;
-    obstacle.transform.z = -1;
+    obstacle.transform.z = 0;
     obstacle.hidden = true;
 
     for (let i = 0; i < numOfSwitches; i++) {
       let s = switches.child("switch" + i);
       s.transform.x = 0;
-      s.transform.z = -1;
+      s.transform.z = 0;
       s.hidden = true;
     }
   }
