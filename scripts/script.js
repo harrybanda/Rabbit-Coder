@@ -311,14 +311,17 @@ initLevel();
 /*------------- Add Command -------------*/
 
 function addCommand(move) {
+  let maxBlocks = levels[currentLevel].blocks;
   if (currentState === states.start) {
-    if (blocksUsed < numOfBlocks) {
+    if (blocksUsed < maxBlocks) {
       let block = blocks.child("block" + blocksUsed++);
       nextBlockSlot -= blockSlotInc;
       block.transform.y = nextBlockSlot;
       block.material = Materials.get(move + "Block");
       block.hidden = false;
       commands.push({ command: move, block: block });
+    } else {
+      Diagnostics.log("Solve this problem with " + maxBlocks + " blocks");
     }
   }
 }

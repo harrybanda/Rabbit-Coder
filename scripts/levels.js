@@ -6,6 +6,7 @@ module.exports = [
       [3, 3],
       [4, 3]
     ],
+    blocks: 2,
     facing: "east"
   },
   // level 2
@@ -16,6 +17,7 @@ module.exports = [
       [3, 3],
       [4, 3]
     ],
+    blocks: 4,
     facing: "north"
   },
   // level 3
@@ -27,6 +29,7 @@ module.exports = [
       [3, 2],
       [2, 2]
     ],
+    blocks: 6,
     facing: "west"
   },
   // level 4
@@ -38,6 +41,7 @@ module.exports = [
       [2, 4],
       [1, 4]
     ],
+    blocks: 3,
     facing: "west"
   },
   // level 5
@@ -54,6 +58,7 @@ module.exports = [
       [2, 2],
       [1, 2]
     ],
+    blocks: 6,
     facing: "east"
   },
   // level 6
@@ -69,6 +74,7 @@ module.exports = [
       [4, 1],
       [5, 1]
     ],
+    blocks: 6,
     facing: "north"
   },
   // level 7
@@ -79,11 +85,11 @@ module.exports = [
       [3, 3],
       [3, 2]
     ],
+    blocks: 8,
     obstacle: 2,
     switches: [1],
     facing: "north"
   },
-
   // level 8
   {
     path: [
@@ -94,9 +100,10 @@ module.exports = [
       [4, 3],
       [5, 3]
     ],
+    blocks: 9,
     obstacle: 4,
     switches: [3, 2],
-    facing: "east"
+    facing: "south"
   },
   // level 9
   {
@@ -108,6 +115,7 @@ module.exports = [
       [4, 3],
       [5, 3]
     ],
+    blocks: 7,
     obstacle: 4,
     switches: [3, 1],
     facing: "south"
