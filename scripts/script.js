@@ -4,17 +4,17 @@ const Animation = require("Animation");
 const TouchGestures = require("TouchGestures");
 const Time = require("Time");
 const Reactive = require("Reactive");
-export const Materials = require("Materials");
+const Materials = require("Materials");
+const Textures = require("Textures");
 
 const player = Scene.root.find("player");
 const blocks = Scene.root.find("blocks");
 const platforms = Scene.root.find("platforms");
 const obstacle = Scene.root.find("obstacle");
 const switches = Scene.root.find("switches");
-export const buttons = Scene.root.find("buttons");
+const buttons = Scene.root.find("buttons");
 
 const levels = require("./levels");
-
 const gridSize = 0.36;
 const gridInc = 0.12;
 const numOfSwitches = 2;
@@ -46,56 +46,35 @@ let dangerCoordinates = createDangerCoordinates();
 /*------------- Touch Gestures -------------*/
 
 TouchGestures.onTap(buttons.child("btnForward")).subscribe(function() {
-  if (buttons.child("btnForward").material.name != "disable") {
-    addCommand("forward");
-  }
+  addCommand("forward");
 });
 
 TouchGestures.onTap(buttons.child("btnLeft")).subscribe(function() {
-  if (buttons.child("btnLeft").material.name != "disable") {
-    addCommand("left");
-  }
+  addCommand("left");
 });
 
 TouchGestures.onTap(buttons.child("btnRight")).subscribe(function() {
-  if (buttons.child("btnRight").material.name != "disable") {
-    addCommand("right");
-  }
+  addCommand("right");
 });
 
 TouchGestures.onTap(buttons.child("btnLoop")).subscribe(function() {
-  if (buttons.child("btnLoop").material.name != "disable") {
-    setButtonState("loopAdded");
-    addCommand("loop");
-  }
+  addCommand("loop");
 });
 
 TouchGestures.onTap(buttons.child("btnStopLoop")).subscribe(function() {
-  if (buttons.child("btnStopLoop").material.name != "disable") {
-    setButtonState("stopAdded");
-    addCommand("stopLoop");
-  }
+  addCommand("stopLoop");
 });
 
 TouchGestures.onTap(buttons.child("btnLoop2")).subscribe(function() {
-  if (buttons.child("btnLoop2").material.name != "disable") {
-    setButtonState("iterationsSelected");
-    loopIterations = 2;
-  }
+  loopIterations = 2;
 });
 
 TouchGestures.onTap(buttons.child("btnLoop3")).subscribe(function() {
-  if (buttons.child("btnLoop3").material.name != "disable") {
-    setButtonState("iterationsSelected");
-    loopIterations = 3;
-  }
+  loopIterations = 3;
 });
 
 TouchGestures.onTap(buttons.child("btnLoop4")).subscribe(function() {
-  if (buttons.child("btnLoop4").material.name != "disable") {
-    setButtonState("iterationsSelected");
-    loopIterations = 4;
-  }
+  loopIterations = 4;
 });
 
 TouchGestures.onTap(blocks.child("btnUndo")).subscribe(function() {
@@ -105,11 +84,6 @@ TouchGestures.onTap(blocks.child("btnUndo")).subscribe(function() {
     popped.block.hidden = true;
     nextBlockSlot += blockSlotInc;
     blocksUsed--;
-    if (popped.command === "loop") {
-      setButtonState("loopRemoved");
-    } else if (popped.command === "stopLoop") {
-      setButtonState("stopRemoved");
-    }
   }
 });
 
@@ -158,7 +132,9 @@ Reactive.monitorMany({
     executionCommands = [];
     Time.clearInterval(exeIntervalID);
     currentState = states.complete;
-    buttons.child("btnRun").material = Materials.get("forwardBlock");
+    buttons
+      .child("btnRun")
+      .material.setTextureSlot("DIFFUSE", Textures.get("next").signal);
 
     if (blocksUsed > maxBlocks) {
       Diagnostics.log("You can also solve this with " + maxBlocks + " blocks.");
@@ -179,7 +155,9 @@ Reactive.monitorMany({
       executionCommands = [];
       Time.clearInterval(exeIntervalID);
       currentState = states.failed;
-      buttons.child("btnRun").material = Materials.get("forwardBlock");
+      buttons
+        .child("btnRun")
+        .material.setTextureSlot("DIFFUSE", Textures.get("retry").signal);
     }
   }
 
@@ -199,7 +177,9 @@ Reactive.monitorMany({
       executionCommands = [];
       Time.clearInterval(exeIntervalID);
       currentState = states.failed;
-      buttons.child("btnRun").material = Materials.get("forwardBlock");
+      buttons
+        .child("btnRun")
+        .material.setTextureSlot("DIFFUSE", Textures.get("retry").signal);
     }
 
     // check if player is on a switch
@@ -370,7 +350,9 @@ function setExecutionInterval(callback, delay, repetitions) {
     if (++e === repetitions) {
       Time.clearInterval(exeIntervalID);
       if (currentState === states.running) currentState = states.uncomplete;
-      buttons.child("btnRun").material = Materials.get("forwardBlock");
+      buttons
+        .child("btnRun")
+        .material.setTextureSlot("DIFFUSE", Textures.get("retry").signal);
     }
   }, delay);
 }
@@ -487,10 +469,23 @@ function movePlayer(command) {
     )
   );
 
+  const jump = Animation.animate(
+    timeDriver,
+    Animation.samplers.sequence({
+      samplers: [
+        Animation.samplers.easeInOutSine(0.03, 0.09),
+        Animation.samplers.easeInOutSine(0.09, 0.03)
+      ],
+      knots: [0, 1, 2]
+    })
+  );
+
   timeDriver.start();
 
   switch (command) {
     case "forward":
+      player.transform.y = jump;
+
       if (playerDir === "east") {
         player.transform.x = translationPosX;
       } else if (playerDir === "north") {
@@ -500,6 +495,7 @@ function movePlayer(command) {
       } else if (playerDir === "south") {
         player.transform.z = translationPosZ;
       }
+
       break;
     case "left":
       if (playerDir === "east") {
@@ -542,8 +538,9 @@ function resetLevel() {
   switchesUsed = 0;
   nextBlockSlot = initBlockSlot;
   obstacleActivated = true;
-  buttons.child("btnRun").material = Materials.get("rightBlock");
-  setButtonState("initial");
+  buttons
+    .child("btnRun")
+    .material.setTextureSlot("DIFFUSE", Textures.get("run").signal);
   Time.clearInterval(exeIntervalID);
 
   for (let i = 0; i < numOfBlocks; i++) {
@@ -584,49 +581,6 @@ function nextLevel() {
   }
 
   resetLevel();
-}
-
-/*------------- Button states -------------*/
-
-function setButtonState(state) {
-  if (state === "loopAdded") {
-    buttons.child("btnForward").material = Materials.get("disable");
-    buttons.child("btnLeft").material = Materials.get("disable");
-    buttons.child("btnRight").material = Materials.get("disable");
-    buttons.child("btnLoop").material = Materials.get("disable");
-    buttons.child("btnStopLoop").material = Materials.get("disable");
-    buttons.child("btnLoop2").material = Materials.get("material4");
-    buttons.child("btnLoop3").material = Materials.get("material4");
-    buttons.child("btnLoop4").material = Materials.get("material4");
-  } else if (state === "loopRemoved") {
-    buttons.child("btnForward").material = Materials.get("forwardBlock");
-    buttons.child("btnLeft").material = Materials.get("leftBlock");
-    buttons.child("btnRight").material = Materials.get("rightBlock");
-    buttons.child("btnLoop").material = Materials.get("loopBlock");
-    buttons.child("btnStopLoop").material = Materials.get("disable");
-    buttons.child("btnLoop2").material = Materials.get("disable");
-    buttons.child("btnLoop3").material = Materials.get("disable");
-    buttons.child("btnLoop4").material = Materials.get("disable");
-  } else if (state === "iterationsSelected") {
-    buttons.child("btnForward").material = Materials.get("forwardBlock");
-    buttons.child("btnLeft").material = Materials.get("leftBlock");
-    buttons.child("btnRight").material = Materials.get("rightBlock");
-    if (stopSelected === false)
-      buttons.child("btnStopLoop").material = Materials.get("stopLoopBlock");
-  } else if (state === "stopAdded") {
-    buttons.child("btnStopLoop").material = Materials.get("disable");
-    stopSelected = true;
-  } else if (state === "stopRemoved") {
-    buttons.child("btnStopLoop").material = Materials.get("stopLoopBlock");
-    stopSelected = false;
-  } else if (state === "initial") {
-    buttons.child("btnLoop").material = Materials.get("loopBlock");
-    buttons.child("btnStopLoop").material = Materials.get("disable");
-    buttons.child("btnLoop2").material = Materials.get("disable");
-    buttons.child("btnLoop3").material = Materials.get("disable");
-    buttons.child("btnLoop4").material = Materials.get("disable");
-    stopSelected = false;
-  }
 }
 
 /*------------- Utils -------------*/
