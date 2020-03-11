@@ -40,72 +40,92 @@ let switchesUsed = 0;
 let nextBlockSlot = initBlockSlot;
 let currentState = states.start;
 let playerDir = levels[currentLevel].facing;
-let loopIterations = 0;
+let loopIterations = 2;
 let exeIntervalID;
 let obstacleActivated = true;
+let loopAdded = false;
+let endLoopAdded = false;
 let allCoordinates = createAllCoordinates();
 let pathCoordinates = createPathCoordinates();
 let dangerCoordinates = createDangerCoordinates();
 
-/*------------- Button Tap Gestures -------------*/
+/*------------- Button Taps -------------*/
 
-TouchGestures.onTap(buttons.child("btnForward")).subscribe(function() {
-  addCommand("forward");
-});
-
-TouchGestures.onTap(buttons.child("btnLeft")).subscribe(function() {
-  addCommand("left");
-});
-
-TouchGestures.onTap(buttons.child("btnRight")).subscribe(function() {
-  addCommand("right");
-});
-
-TouchGestures.onTap(buttons.child("btnLoop")).subscribe(function() {
-  addCommand("loop");
-});
-
-TouchGestures.onTap(buttons.child("btnStopLoop")).subscribe(function() {
-  addCommand("stopLoop");
-});
-
-TouchGestures.onTap(buttons.child("btnLoop2")).subscribe(function() {
-  loopIterations = 2;
-});
-
-TouchGestures.onTap(buttons.child("btnLoop3")).subscribe(function() {
-  loopIterations = 3;
-});
-
-TouchGestures.onTap(buttons.child("btnLoop4")).subscribe(function() {
-  loopIterations = 4;
-});
-
-TouchGestures.onTap(blocks.child("btnUndo")).subscribe(function() {
-  // Remove the last command
-  if (blocksUsed !== 0 && currentState === states.start) {
-    let popped = commands.pop();
-    popped.block.transform.y = blockInitY;
-    popped.block.hidden = true;
-    nextBlockSlot += blockSlotInc;
-    blocksUsed--;
-  }
-});
-
-TouchGestures.onTap(buttons.child("btnRun")).subscribe(function() {
-  // Call a different function based on current game state
-  switch (currentState) {
-    case states.start:
-      if (commands.length !== 0) executeCommands();
-      break;
-    case states.failed || states.uncomplete:
-      resetLevel();
-      break;
-    case states.complete:
-      nextLevel();
-      break;
-  }
-});
+for (let i = 0; i < 10; i++) {
+  let button = buttons.child("btn" + i);
+  TouchGestures.onTap(button).subscribe(function() {
+    switch (i) {
+      case 0:
+        addCommand("forward");
+        break;
+      case 1:
+        addCommand("left");
+        break;
+      case 2:
+        addCommand("right");
+        break;
+      case 3:
+        if (!loopAdded) {
+          loopAdded = true;
+          loopIterations = 2;
+          addCommand("loop_2");
+          setTexture(commands[findCommandIndex("loop_")].block, "loop_2_block");
+          setTexture(buttons.child("btn3"), "loop_off");
+        }
+        break;
+      case 4:
+        if (!endLoopAdded) {
+          endLoopAdded = true;
+          addCommand("end_loop");
+          setTexture(buttons.child("btn4"), "end_loop_off");
+        }
+        break;
+      case 5:
+        setLoopIterations(2);
+        break;
+      case 6:
+        setLoopIterations(3);
+        break;
+      case 7:
+        setLoopIterations(4);
+        break;
+      case 8:
+        // Call a different function based on current game state
+        switch (currentState) {
+          case states.start:
+            if (commands.length !== 0) executeCommands();
+            break;
+          case states.failed:
+            resetLevel();
+            break;
+          case states.uncomplete:
+            resetLevel();
+            break;
+          case states.complete:
+            nextLevel();
+            break;
+        }
+        break;
+      case 9:
+        // Remove the last command
+        if (blocksUsed !== 0 && currentState === states.start) {
+          let popped = commands.pop();
+          popped.block.transform.y = blockInitY;
+          popped.block.hidden = true;
+          nextBlockSlot += blockSlotInc;
+          blocksUsed--;
+          if (popped.command.search("loop_") !== -1) {
+            loopAdded = false;
+            setTexture(buttons.child("btn3"), "loop");
+          } else if (popped.command === "end_loop") {
+            endLoopAdded = false;
+            setTexture(buttons.child("btn4"), "end_loop");
+          }
+        }
+        break;
+    }
+  });
+}
 
 /*------------- Monitor Player Position -------------*/
 
@@ -132,7 +152,7 @@ Reactive.monitorMany({
     executionCommands = [];
     Time.clearInterval(exeIntervalID);
     currentState = states.complete;
-    setButtonTexture("btnRun", "next");
+    setTexture(buttons.child("btn8"), "next");
 
     if (blocksUsed > maxBlocks) {
       Diagnostics.log("You can also solve this with " + maxBlocks + " blocks.");
@@ -153,7 +173,7 @@ Reactive.monitorMany({
       executionCommands = [];
       Time.clearInterval(exeIntervalID);
       currentState = states.failed;
-      setButtonTexture("btnRun", "retry");
+      setTexture(buttons.child("btn8"), "retry");
     }
   }
 
@@ -181,7 +201,7 @@ Reactive.monitorMany({
       executionCommands = [];
       Time.clearInterval(exeIntervalID);
       currentState = states.failed;
-      setButtonTexture("btnRun", "retry");
+      setTexture(buttons.child("btn8"), "retry");
     }
 
     // Check if player is on a switch
@@ -310,7 +330,7 @@ function addCommand(move) {
       let block = blocks.child("block" + blocksUsed++);
       nextBlockSlot -= blockSlotInc;
       block.transform.y = nextBlockSlot;
-      block.material = Materials.get(move + "Block");
+      block.material = Materials.get(move + "_block_mat");
       block.hidden = false;
       commands.push({ command: move, block: block });
     }
@@ -321,26 +341,29 @@ function addCommand(move) {
 
 function executeCommands() {
   currentState = states.running;
-  let loopIndex = findCommandIndex("loop");
-  let stopIndex = findCommandIndex("stopLoop");
+  let loopIndex = findCommandIndex("loop_");
+  let endIndex = findCommandIndex("end_loop");
 
-  if (loopIndex != undefined && stopIndex != undefined) {
-    executionCommands = getLoopCommands(loopIndex, stopIndex);
-  } else if (loopIndex != undefined && loopIterations === 0) {
+  if (loopIndex != undefined && endIndex != undefined) {
+    if (endIndex < loopIndex) {
+      //TODO: handle this visually later
+      Diagnostics.log("loop block must go before the end loop block");
+      currentState = states.start;
+    } else {
+      executionCommands = getLoopCommands(loopIndex, endIndex);
+    }
+  } else if (loopIndex != undefined && endIndex == undefined) {
     //TODO: handle this visually later
-    Diagnostics.log("please select a number of iterations");
+    Diagnostics.log("please end the loop");
     currentState = states.start;
-  } else if (loopIndex != undefined && stopIndex == undefined) {
+  } else if (loopIndex == undefined && endIndex != undefined) {
     //TODO: handle this visually later
-    Diagnostics.log("please stop the loop");
+    Diagnostics.log("loop block not added");
     currentState = states.start;
-  } else if (stopIndex != undefined && loopIndex == undefined) {
-    //TODO: handle this visually later
-    Diagnostics.log("start loop not added");
-    currentState = states.start;
-  } else if (loopIndex == undefined && stopIndex == undefined) {
+  } else if (loopIndex == undefined && endIndex == undefined) {
     executionCommands = getNonLoopCommands();
   }
+
   setExecutionInterval(
     function(e) {
       movePlayer(executionCommands[e]);
@@ -358,28 +381,31 @@ function setExecutionInterval(callback, delay, repetitions) {
     if (++e === repetitions) {
       Time.clearInterval(exeIntervalID);
       if (currentState === states.running) currentState = states.uncomplete;
-      setButtonTexture("btnRun", "retry");
+      setTexture(buttons.child("btn8"), "retry");
     }
   }, delay);
 }
 
-function getLoopCommands(loopIndex, stopIndex) {
+function getLoopCommands(loopIndex, endIndex) {
   let commandsToLoop = [];
   let dupCommands = [];
   let unDuplicatedLoop = [];
   let nonLoopCommands = getNonLoopCommands();
 
   // get loop commands
-  for (let i = loopIndex; i < stopIndex; i++) {
+  for (let i = loopIndex; i < endIndex; i++) {
     commandsToLoop.push(commands[i].command);
   }
   commandsToLoop.shift();
   if (commandsToLoop.length === 0) {
-    //TODO: handle this visually later
-    Diagnostics.log("loop empty");
-    currentState = states.start;
     for (let i = 1; i >= 0; i--)
-      nonLoopCommands.splice([loopIndex, stopIndex][i], 1);
+      nonLoopCommands.splice([loopIndex, endIndex][i], 1);
+
+    if (nonLoopCommands.length === 0) {
+      Diagnostics.log("loop is empty");
+      currentState = states.start;
+    }
+
     return nonLoopCommands;
   } else {
     // duplicate loop commands
@@ -389,7 +415,7 @@ function getLoopCommands(loopIndex, stopIndex) {
       }
     }
     // merge loop commands
-    for (let i = loopIndex; i < stopIndex + 1; i++) {
+    for (let i = loopIndex; i < endIndex + 1; i++) {
       unDuplicatedLoop.push(nonLoopCommands[i]);
     }
     nonLoopCommands.splice(loopIndex, unDuplicatedLoop.length, dupCommands);
@@ -404,17 +430,6 @@ function getNonLoopCommands() {
     nonLoopCommands.push(commands[i].command);
   }
   return nonLoopCommands;
-}
-
-function findCommandIndex(command) {
-  let index;
-  for (let i = 0; i < commands.length; i++) {
-    if (commands[i].command === command) {
-      index = i;
-      break;
-    }
-  }
-  return index;
 }
 
 /*------------- Control Player -------------*/
@@ -536,13 +551,17 @@ function resetLevel() {
   commands = [];
   executionCommands = [];
   switchesAdded = [];
-  loopIterations = 0;
+  loopIterations = 2;
   blocksUsed = 0;
   platformsUsed = 0;
   switchesUsed = 0;
   nextBlockSlot = initBlockSlot;
   obstacleActivated = true;
-  setButtonTexture("btnRun", "run");
+  loopAdded = false;
+  endLoopAdded = false;
+  setTexture(buttons.child("btn8"), "play");
+  setTexture(buttons.child("btn3"), "loop");
+  setTexture(buttons.child("btn4"), "end_loop");
   Time.clearInterval(exeIntervalID);
 
   for (let i = 0; i < numOfBlocks; i++) {
@@ -596,7 +615,28 @@ function isBetween(n, a, b) {
   return (n - a) * (n - b) <= 0;
 }
 
-function setButtonTexture(button, texture) {
+function setTexture(object, texture) {
   let signal = Textures.get(texture).signal;
-  buttons.child(button).material.setTextureSlot("DIFFUSE", signal);
+  object.material.setTextureSlot("DIFFUSE", signal);
+}
+
+function setLoopIterations(i) {
+  if (findCommandIndex("loop_") !== undefined) {
+    loopIterations = i;
+    setTexture(
+      commands[findCommandIndex("loop_")].block,
+      "loop_" + i + "_block"
+    );
+  }
+}
+
+function findCommandIndex(command) {
+  let index;
+  for (let i = 0; i < commands.length; i++) {
+    if (commands[i].command.search(command) !== -1) {
+      index = i;
+      break;
+    }
+  }
+  return index;
 }
