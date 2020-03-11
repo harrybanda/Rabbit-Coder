@@ -45,6 +45,7 @@ let exeIntervalID;
 let obstacleActivated = true;
 let loopAdded = false;
 let endLoopAdded = false;
+let activateLoopFunctionality = false;
 let allCoordinates = createAllCoordinates();
 let pathCoordinates = createPathCoordinates();
 let dangerCoordinates = createDangerCoordinates();
@@ -65,7 +66,7 @@ for (let i = 0; i < 10; i++) {
         addCommand("right");
         break;
       case 3:
-        if (!loopAdded) {
+        if (!loopAdded && activateLoopFunctionality === true) {
           loopAdded = true;
           loopIterations = 2;
           addCommand("loop_2");
@@ -74,7 +75,7 @@ for (let i = 0; i < 10; i++) {
         }
         break;
       case 4:
-        if (!endLoopAdded) {
+        if (!endLoopAdded && activateLoopFunctionality === true) {
           endLoopAdded = true;
           addCommand("end_loop");
           setTexture(buttons.child("btn4"), "end_loop_off");
@@ -318,6 +319,15 @@ function initLevel() {
       s.hidden = false;
     }
   }
+
+  if (currentLevel > 2) {
+    activateLoopFunctionality = true;
+    setTexture(buttons.child("btn3"), "loop");
+    setTexture(buttons.child("btn4"), "end_loop");
+    setTexture(buttons.child("btn5"), "loop_2");
+    setTexture(buttons.child("btn6"), "loop_3");
+    setTexture(buttons.child("btn7"), "loop_4");
+  }
 }
 
 initLevel();
@@ -560,8 +570,6 @@ function resetLevel() {
   loopAdded = false;
   endLoopAdded = false;
   setTexture(buttons.child("btn8"), "play");
-  setTexture(buttons.child("btn3"), "loop");
-  setTexture(buttons.child("btn4"), "end_loop");
   Time.clearInterval(exeIntervalID);
 
   for (let i = 0; i < numOfBlocks; i++) {
@@ -621,7 +629,10 @@ function setTexture(object, texture) {
 }
 
 function setLoopIterations(i) {
-  if (findCommandIndex("loop_") !== undefined) {
+  if (
+    findCommandIndex("loop_") !== undefined &&
+    activateLoopFunctionality === true
+  ) {
     loopIterations = i;
     setTexture(
       commands[findCommandIndex("loop_")].block,
