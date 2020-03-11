@@ -1,3 +1,4 @@
+// Spark AR modules
 const Diagnostics = require("Diagnostics");
 const Scene = require("Scene");
 const Animation = require("Animation");
@@ -7,6 +8,7 @@ const Reactive = require("Reactive");
 const Materials = require("Materials");
 const Textures = require("Textures");
 
+// Game objects
 const player = Scene.root.find("player");
 const blocks = Scene.root.find("blocks");
 const platforms = Scene.root.find("platforms");
@@ -14,6 +16,7 @@ const obstacle = Scene.root.find("obstacle");
 const switches = Scene.root.find("switches");
 const buttons = Scene.root.find("buttons");
 
+// Game constants
 const levels = require("./levels");
 const gridSize = 0.36;
 const gridInc = 0.12;
@@ -23,8 +26,10 @@ const numOfPlatforms = 10;
 const blockSlotInc = 0.1;
 const blockInitY = 0.9;
 const initBlockSlot = 0.6;
+const playerInitY = 0.03;
 const states = { start: 1, running: 2, complete: 3, failed: 4, uncomplete: 5 };
 
+// Game variables
 let currentLevel = 0;
 let commands = [];
 let executionCommands = [];
@@ -37,13 +42,12 @@ let currentState = states.start;
 let playerDir = levels[currentLevel].facing;
 let loopIterations = 0;
 let exeIntervalID;
-let stopSelected = false;
 let obstacleActivated = true;
 let allCoordinates = createAllCoordinates();
 let pathCoordinates = createPathCoordinates();
 let dangerCoordinates = createDangerCoordinates();
 
-/*------------- Touch Gestures -------------*/
+/*------------- Button Tap Gestures -------------*/
 
 TouchGestures.onTap(buttons.child("btnForward")).subscribe(function() {
   addCommand("forward");
@@ -78,6 +82,7 @@ TouchGestures.onTap(buttons.child("btnLoop4")).subscribe(function() {
 });
 
 TouchGestures.onTap(blocks.child("btnUndo")).subscribe(function() {
+  // Remove the last command
   if (blocksUsed !== 0 && currentState === states.start) {
     let popped = commands.pop();
     popped.block.transform.y = blockInitY;
@@ -88,16 +93,12 @@ TouchGestures.onTap(blocks.child("btnUndo")).subscribe(function() {
 });
 
 TouchGestures.onTap(buttons.child("btnRun")).subscribe(function() {
+  // Call a different function based on current game state
   switch (currentState) {
     case states.start:
-      if (commands.length !== 0) {
-        executeCommands();
-      }
+      if (commands.length !== 0) executeCommands();
       break;
-    case states.failed:
-      resetLevel();
-      break;
-    case states.uncomplete:
+    case states.failed || states.uncomplete:
       resetLevel();
       break;
     case states.complete:
@@ -112,19 +113,18 @@ Reactive.monitorMany({
   x: player.transform.x,
   z: player.transform.z
 }).subscribe(({ newValues }) => {
-  let px = newValues.x;
-  let pz = newValues.z;
-  let path = pathCoordinates;
-  let goalX = path[path.length - 1][0];
-  let goalZ = path[path.length - 1][1];
+  let playerX = newValues.x;
+  let playerZ = newValues.z;
+  let goalX = pathCoordinates[pathCoordinates.length - 1][0];
+  let goalZ = pathCoordinates[pathCoordinates.length - 1][1];
   let obstacleCoords = levels[currentLevel].obstacle;
-  let zoneArea = 0.005;
+  let collisionArea = 0.005;
   let maxBlocks = levels[currentLevel].blocks;
 
-  // check if player is on the goal
+  // Check if player is on the goal
   if (
-    isBetween(px, goalX + zoneArea, goalX - zoneArea) &&
-    isBetween(pz, goalZ + zoneArea, goalZ - zoneArea)
+    isBetween(playerX, goalX + collisionArea, goalX - collisionArea) &&
+    isBetween(playerZ, goalZ + collisionArea, goalZ - collisionArea)
   ) {
     player.transform.x = goalX;
     player.transform.z = goalZ;
@@ -132,22 +132,20 @@ Reactive.monitorMany({
     executionCommands = [];
     Time.clearInterval(exeIntervalID);
     currentState = states.complete;
-    buttons
-      .child("btnRun")
-      .material.setTextureSlot("DIFFUSE", Textures.get("next").signal);
+    setButtonTexture("btnRun", "next");
 
     if (blocksUsed > maxBlocks) {
       Diagnostics.log("You can also solve this with " + maxBlocks + " blocks.");
     }
   }
 
-  // check if player is on a danger zone
+  // Check if player is on a danger zone
   for (let i = 0; i < dangerCoordinates.length; i++) {
     let dx = dangerCoordinates[i][0];
     let dz = dangerCoordinates[i][1];
     if (
-      isBetween(px, dx + zoneArea, dx - zoneArea) &&
-      isBetween(pz, dz + zoneArea, dz - zoneArea)
+      isBetween(playerX, dx + collisionArea, dx - collisionArea) &&
+      isBetween(playerZ, dz + collisionArea, dz - collisionArea)
     ) {
       player.transform.x = dx;
       player.transform.z = dz;
@@ -155,20 +153,26 @@ Reactive.monitorMany({
       executionCommands = [];
       Time.clearInterval(exeIntervalID);
       currentState = states.failed;
-      buttons
-        .child("btnRun")
-        .material.setTextureSlot("DIFFUSE", Textures.get("retry").signal);
+      setButtonTexture("btnRun", "retry");
     }
   }
 
   if ("obstacle" in levels[currentLevel]) {
-    // check if player is on obstacle
+    // Check if player is on an obstacle
     let obstacleX = pathCoordinates[obstacleCoords][0];
     let obstacleZ = pathCoordinates[obstacleCoords][1];
 
     if (
-      isBetween(px, obstacleX + zoneArea, obstacleX - zoneArea) &&
-      isBetween(pz, obstacleZ + zoneArea, obstacleZ - zoneArea) &&
+      isBetween(
+        playerX,
+        obstacleX + collisionArea,
+        obstacleX - collisionArea
+      ) &&
+      isBetween(
+        playerZ,
+        obstacleZ + collisionArea,
+        obstacleZ - collisionArea
+      ) &&
       obstacleActivated
     ) {
       player.transform.x = obstacleX;
@@ -177,19 +181,17 @@ Reactive.monitorMany({
       executionCommands = [];
       Time.clearInterval(exeIntervalID);
       currentState = states.failed;
-      buttons
-        .child("btnRun")
-        .material.setTextureSlot("DIFFUSE", Textures.get("retry").signal);
+      setButtonTexture("btnRun", "retry");
     }
 
-    // check if player is on a switch
+    // Check if player is on a switch
     let switchCoords = levels[currentLevel].switches;
     for (let i = 0; i < switchCoords.length; i++) {
       let sx = pathCoordinates[switchCoords[i]][0];
       let sz = pathCoordinates[switchCoords[i]][1];
       if (
-        isBetween(px, sx + zoneArea, sx - zoneArea) &&
-        isBetween(pz, sz + zoneArea, sz - zoneArea)
+        isBetween(playerX, sx + collisionArea, sx - collisionArea) &&
+        isBetween(playerZ, sz + collisionArea, sz - collisionArea)
       ) {
         switchesAdded[i].activated = true;
         let s = switches.child("switch" + i);
@@ -197,6 +199,7 @@ Reactive.monitorMany({
       }
     }
 
+    // Remove obstacle if all switches are deactivated
     if (switchesAdded.every(val => val.activated === true)) {
       obstacleActivated = false;
       obstacle.hidden = true;
@@ -207,6 +210,7 @@ Reactive.monitorMany({
 /*------------- Create Level Coordinates -------------*/
 
 function createAllCoordinates() {
+  // Creates a 7 x 7 grid of coordinates
   let coords = [];
   for (let i = -gridSize; i <= gridSize; i += gridInc) {
     for (let j = -gridSize; j <= gridSize; j += gridInc) {
@@ -219,6 +223,7 @@ function createAllCoordinates() {
 }
 
 function createPathCoordinates() {
+  // Get the current level path coordinates from all the coordinates
   let path = levels[currentLevel].path;
   let coords = [];
   for (let i = 0; i < path.length; i++) {
@@ -230,6 +235,7 @@ function createPathCoordinates() {
 }
 
 function createDangerCoordinates() {
+  // Get the danger coordinates by removing the current path coordinates
   let coords = allCoordinates;
   for (let i = 0; i < pathCoordinates.length; i++) {
     for (let j = 0; j < coords.length; j++) {
@@ -247,10 +253,13 @@ function createDangerCoordinates() {
 
 function initLevel() {
   playerDir = levels[currentLevel].facing;
+
+  // Set the player's initial position
   player.transform.x = pathCoordinates[0][0];
   player.transform.z = pathCoordinates[0][1];
-  player.transform.y = 0.03;
+  player.transform.y = playerInitY;
 
+  // Set the player's initial direction
   if (playerDir === "east") {
     player.transform.rotationY = 0;
   } else if (playerDir === "north") {
@@ -261,7 +270,7 @@ function initLevel() {
     player.transform.rotationY = degreesToRadians(270);
   }
 
-  // add path
+  // Add the path platforms
   for (let i = 0; i < pathCoordinates.length; i++) {
     let path = pathCoordinates[i];
     let x = path[0];
@@ -273,13 +282,13 @@ function initLevel() {
   }
 
   if ("obstacle" in levels[currentLevel]) {
-    // add obstacle
+    // Add the obstacle
     let obstacleCoords = levels[currentLevel].obstacle;
     obstacle.transform.x = pathCoordinates[obstacleCoords][0];
     obstacle.transform.z = pathCoordinates[obstacleCoords][1];
     obstacle.hidden = false;
 
-    // add switches
+    // Add the switches
     let switchCoords = levels[currentLevel].switches;
     for (let i = 0; i < switchCoords.length; i++) {
       let s = switches.child("switch" + switchesUsed++);
@@ -312,8 +321,8 @@ function addCommand(move) {
 
 function executeCommands() {
   currentState = states.running;
-  let loopIndex = findIndex("loop");
-  let stopIndex = findIndex("stopLoop");
+  let loopIndex = findCommandIndex("loop");
+  let stopIndex = findCommandIndex("stopLoop");
 
   if (loopIndex != undefined && stopIndex != undefined) {
     executionCommands = getLoopCommands(loopIndex, stopIndex);
@@ -346,13 +355,10 @@ function setExecutionInterval(callback, delay, repetitions) {
   callback(0);
   exeIntervalID = Time.setInterval(function() {
     callback(e + 1);
-
     if (++e === repetitions) {
       Time.clearInterval(exeIntervalID);
       if (currentState === states.running) currentState = states.uncomplete;
-      buttons
-        .child("btnRun")
-        .material.setTextureSlot("DIFFUSE", Textures.get("retry").signal);
+      setButtonTexture("btnRun", "retry");
     }
   }, delay);
 }
@@ -400,7 +406,7 @@ function getNonLoopCommands() {
   return nonLoopCommands;
 }
 
-function findIndex(command) {
+function findCommandIndex(command) {
   let index;
   for (let i = 0; i < commands.length; i++) {
     if (commands[i].command === command) {
@@ -473,8 +479,8 @@ function movePlayer(command) {
     timeDriver,
     Animation.samplers.sequence({
       samplers: [
-        Animation.samplers.easeInOutSine(0.03, 0.09),
-        Animation.samplers.easeInOutSine(0.09, 0.03)
+        Animation.samplers.easeInOutSine(playerInitY, 0.09),
+        Animation.samplers.easeInOutSine(0.09, playerInitY)
       ],
       knots: [0, 1, 2]
     })
@@ -485,7 +491,6 @@ function movePlayer(command) {
   switch (command) {
     case "forward":
       player.transform.y = jump;
-
       if (playerDir === "east") {
         player.transform.x = translationPosX;
       } else if (playerDir === "north") {
@@ -495,7 +500,6 @@ function movePlayer(command) {
       } else if (playerDir === "south") {
         player.transform.z = translationPosZ;
       }
-
       break;
     case "left":
       if (playerDir === "east") {
@@ -538,9 +542,7 @@ function resetLevel() {
   switchesUsed = 0;
   nextBlockSlot = initBlockSlot;
   obstacleActivated = true;
-  buttons
-    .child("btnRun")
-    .material.setTextureSlot("DIFFUSE", Textures.get("run").signal);
+  setButtonTexture("btnRun", "run");
   Time.clearInterval(exeIntervalID);
 
   for (let i = 0; i < numOfBlocks; i++) {
@@ -592,4 +594,9 @@ function degreesToRadians(degrees) {
 
 function isBetween(n, a, b) {
   return (n - a) * (n - b) <= 0;
+}
+
+function setButtonTexture(button, texture) {
+  let signal = Textures.get(texture).signal;
+  buttons.child(button).material.setTextureSlot("DIFFUSE", signal);
 }
