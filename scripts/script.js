@@ -9,12 +9,13 @@ const Materials = require("Materials");
 const Textures = require("Textures");
 
 // Game objects
-const player = Scene.root.find("player");
+const player = Scene.root.find("bunny");
 const blocks = Scene.root.find("blocks");
 const platforms = Scene.root.find("platforms");
-const obstacle = Scene.root.find("obstacle");
+const obstacle = Scene.root.find("spikes");
 const switches = Scene.root.find("switches");
 const buttons = Scene.root.find("buttons");
+const goal = Scene.root.find("carrot");
 
 // Game constants
 const levels = require("./levels");
@@ -26,7 +27,7 @@ const numOfPlatforms = 10;
 const blockSlotInc = 0.1;
 const blockInitY = 0.9;
 const initBlockSlot = 0.6;
-const playerInitY = 0.03;
+const playerInitY = 0.05;
 const states = { start: 1, running: 2, complete: 3, failed: 4, uncomplete: 5 };
 
 // Game variables
@@ -52,7 +53,7 @@ let dangerCoordinates = createDangerCoordinates();
 
 /*------------- Button Taps -------------*/
 
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 9; i++) {
   let button = buttons.child("btn" + i);
   TouchGestures.onTap(button).subscribe(function() {
     switch (i) {
@@ -107,26 +108,26 @@ for (let i = 0; i < 10; i++) {
             break;
         }
         break;
-      case 9:
-        // Remove the last command
-        if (blocksUsed !== 0 && currentState === states.start) {
-          let popped = commands.pop();
-          popped.block.transform.y = blockInitY;
-          popped.block.hidden = true;
-          nextBlockSlot += blockSlotInc;
-          blocksUsed--;
-          if (popped.command.search("loop_") !== -1) {
-            loopAdded = false;
-            setTexture(buttons.child("btn3"), "loop");
-          } else if (popped.command === "end_loop") {
-            endLoopAdded = false;
-            setTexture(buttons.child("btn4"), "end_loop");
-          }
-        }
-        break;
     }
   });
 }
+TouchGestures.onTap(blocks.child("btn9")).subscribe(function() {
+  // Remove the last command
+  if (blocksUsed !== 0 && currentState === states.start) {
+    let popped = commands.pop();
+    popped.block.transform.y = blockInitY;
+    popped.block.hidden = true;
+    nextBlockSlot += blockSlotInc;
+    blocksUsed--;
+    if (popped.command.search("loop_") !== -1) {
+      loopAdded = false;
+      setTexture(buttons.child("btn3"), "loop");
+    } else if (popped.command === "end_loop") {
+      endLoopAdded = false;
+      setTexture(buttons.child("btn4"), "end_loop");
+    }
+  }
+});
 
 /*------------- Monitor Player Position -------------*/
 
@@ -280,6 +281,13 @@ function initLevel() {
   player.transform.z = pathCoordinates[0][1];
   player.transform.y = playerInitY;
 
+  // set goal position
+  let goalX = pathCoordinates[pathCoordinates.length - 1][0];
+  let goalZ = pathCoordinates[pathCoordinates.length - 1][1];
+  goal.transform.x = goalX;
+  goal.transform.z = goalZ;
+  goal.transform.y = 0.03;
+
   // Set the player's initial direction
   if (playerDir === "east") {
     player.transform.rotationY = 0;
@@ -307,6 +315,7 @@ function initLevel() {
     let obstacleCoords = levels[currentLevel].obstacle;
     obstacle.transform.x = pathCoordinates[obstacleCoords][0];
     obstacle.transform.z = pathCoordinates[obstacleCoords][1];
+    obstacle.transform.y = 0.03;
     obstacle.hidden = false;
 
     // Add the switches
@@ -315,6 +324,7 @@ function initLevel() {
       let s = switches.child("switch" + switchesUsed++);
       s.transform.x = pathCoordinates[switchCoords[i]][0];
       s.transform.z = pathCoordinates[switchCoords[i]][1];
+      s.transform.y = 0.03;
       switchesAdded.push({ switch: "switch" + switchesUsed, activated: false });
       s.hidden = false;
     }
