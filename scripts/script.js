@@ -27,7 +27,7 @@ const numOfPlatforms = 10;
 const blockSlotInc = 0.1;
 const blockInitY = 0.9;
 const initBlockSlot = 0.6;
-const playerInitY = 0.05;
+const playerInitY = 0.02;
 const states = { start: 1, running: 2, complete: 3, failed: 4, uncomplete: 5 };
 
 // Game variables
@@ -386,7 +386,7 @@ function executeCommands() {
 
   setExecutionInterval(
     function(e) {
-      movePlayer(executionCommands[e]);
+      animatePlayerMovement(executionCommands[e]);
     },
     1000,
     executionCommands.length
@@ -452,11 +452,11 @@ function getNonLoopCommands() {
   return nonLoopCommands;
 }
 
-/*------------- Control Player -------------*/
+/*------------- Animations -------------*/
 
-function movePlayer(command) {
+function animatePlayerMovement(command) {
   const timeDriverParameters = {
-    durationMilliseconds: 500,
+    durationMilliseconds: 300,
     loopCount: 1,
     mirror: false
   };
@@ -514,8 +514,8 @@ function movePlayer(command) {
     timeDriver,
     Animation.samplers.sequence({
       samplers: [
-        Animation.samplers.easeInOutSine(playerInitY, 0.09),
-        Animation.samplers.easeInOutSine(0.09, playerInitY)
+        Animation.samplers.easeInOutSine(playerInitY, 0.1),
+        Animation.samplers.easeInOutSine(0.1, playerInitY)
       ],
       knots: [0, 1, 2]
     })
@@ -563,6 +563,53 @@ function movePlayer(command) {
   }
 }
 
+function animatePlayerIdle() {
+  const timeDriverParameters = {
+    durationMilliseconds: 400,
+    loopCount: Infinity,
+    mirror: true
+  };
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const scale = Animation.animate(
+    timeDriver,
+    Animation.samplers.linear(
+      player.transform.scaleY.pinLastValue(),
+      player.transform.scaleY.pinLastValue() + 0.02
+    )
+  );
+
+  player.transform.scaleY = scale;
+
+  timeDriver.start();
+}
+
+animatePlayerIdle();
+
+function animateCarrot() {
+  const timeDriverParameters = {
+    durationMilliseconds: 2500,
+    loopCount: Infinity,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const rotate = Animation.animate(
+    timeDriver,
+    Animation.samplers.linear(
+      goal.transform.rotationY.pinLastValue(),
+      player.transform.rotationY.pinLastValue() - degreesToRadians(360)
+    )
+  );
+
+  goal.transform.rotationY = rotate;
+
+  timeDriver.start();
+}
+
+animateCarrot();
+
 /*------------- Reset current level -------------*/
 
 function resetLevel() {
@@ -579,6 +626,7 @@ function resetLevel() {
   obstacleActivated = true;
   loopAdded = false;
   endLoopAdded = false;
+  player.hidden = false;
   setTexture(buttons.child("btn8"), "play");
   Time.clearInterval(exeIntervalID);
 
