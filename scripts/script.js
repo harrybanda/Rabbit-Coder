@@ -155,6 +155,7 @@ Reactive.monitorMany({
     Time.clearInterval(exeIntervalID);
     currentState = states.complete;
     setTexture(buttons.child("btn8"), "next");
+    goal.hidden = true;
 
     if (blocksUsed > maxBlocks) {
       Diagnostics.log("You can also solve this with " + maxBlocks + " blocks.");
@@ -176,6 +177,7 @@ Reactive.monitorMany({
       Time.clearInterval(exeIntervalID);
       currentState = states.failed;
       setTexture(buttons.child("btn8"), "retry");
+      animatePlayerFall();
     }
   }
 
@@ -204,6 +206,7 @@ Reactive.monitorMany({
       Time.clearInterval(exeIntervalID);
       currentState = states.failed;
       setTexture(buttons.child("btn8"), "retry");
+      animatePlayerSpikeDeath();
     }
 
     // Check if player is on a switch
@@ -217,14 +220,15 @@ Reactive.monitorMany({
       ) {
         switchesAdded[i].activated = true;
         let s = switches.child("switch" + i);
-        s.hidden = true;
+        s.child("button").child("knob").transform.z = 0;
+        player.transform.y = playerInitY + 0.015;
       }
     }
 
     // Remove obstacle if all switches are deactivated
     if (switchesAdded.every(val => val.activated === true)) {
       obstacleActivated = false;
-      obstacle.hidden = true;
+      animateSpikes();
     }
   }
 });
@@ -287,6 +291,7 @@ function initLevel() {
   goal.transform.x = goalX;
   goal.transform.z = goalZ;
   goal.transform.y = 0.03;
+  goal.hidden = false;
 
   // Set the player's initial direction
   if (playerDir === "east") {
@@ -330,7 +335,7 @@ function initLevel() {
     }
   }
 
-  if (currentLevel > 2) {
+  if (currentLevel > 4) {
     activateLoopFunctionality = true;
     setTexture(buttons.child("btn3"), "loop");
     setTexture(buttons.child("btn4"), "end_loop");
@@ -599,7 +604,7 @@ function animateCarrot() {
     timeDriver,
     Animation.samplers.linear(
       goal.transform.rotationY.pinLastValue(),
-      player.transform.rotationY.pinLastValue() - degreesToRadians(360)
+      goal.transform.rotationY.pinLastValue() - degreesToRadians(360)
     )
   );
 
@@ -609,6 +614,83 @@ function animateCarrot() {
 }
 
 animateCarrot();
+
+function animatePlayerFall() {
+  const timeDriverParameters = {
+    durationMilliseconds: 100,
+    loopCount: 1,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const moveY = Animation.animate(
+    timeDriver,
+    Animation.samplers.easeInOutSine(playerInitY - 0.1, -0.17)
+  );
+
+  player.transform.y = moveY;
+
+  timeDriver.start();
+
+  Time.setTimeout(function() {
+    player.hidden = true;
+  }, 200);
+}
+
+function animatePlayerSpikeDeath() {
+  const timeDriverParameters = {
+    durationMilliseconds: 500,
+    loopCount: 1,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const deadY = Animation.animate(
+    timeDriver,
+    Animation.samplers.sequence({
+      samplers: [
+        Animation.samplers.easeInOutSine(
+          player.transform.y.pinLastValue(),
+          player.transform.y.pinLastValue() + 0.1
+        ),
+        Animation.samplers.easeInOutSine(
+          player.transform.y.pinLastValue() + 0.1,
+          playerInitY - 0.17
+        )
+      ],
+      knots: [0, 1, 2]
+    })
+  );
+
+  player.transform.y = deadY;
+
+  timeDriver.start();
+
+  Time.setTimeout(function() {
+    player.hidden = true;
+  }, 600);
+}
+
+function animateSpikes() {
+  const timeDriverParameters = {
+    durationMilliseconds: 400,
+    loopCount: 1,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const moveY = Animation.animate(
+    timeDriver,
+    Animation.samplers.linear(obstacle.transform.y.pinLastValue(), -0.03)
+  );
+
+  obstacle.transform.y = moveY;
+
+  timeDriver.start();
+}
 
 /*------------- Reset current level -------------*/
 
@@ -634,6 +716,11 @@ function resetLevel() {
     let block = blocks.child("block" + i);
     block.transform.y = blockInitY;
     block.hidden = true;
+  }
+
+  for (let i = 0; i < numOfSwitches; i++) {
+    let s = switches.child("switch" + i);
+    s.child("button").child("knob").transform.z = -0.045;
   }
 
   initLevel();

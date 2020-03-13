@@ -1,5 +1,5 @@
 module.exports = [
-  // level 0
+  // level 1
   {
     path: [
       [2, 3],
@@ -9,7 +9,7 @@ module.exports = [
     blocks: 2,
     facing: "east"
   },
-  // level 1
+  // level 2
   {
     path: [
       [2, 4],
@@ -20,7 +20,7 @@ module.exports = [
     blocks: 4,
     facing: "north"
   },
-  // level 2
+  // level 3
   {
     path: [
       [4, 4],
@@ -32,7 +32,35 @@ module.exports = [
     blocks: 6,
     facing: "west"
   },
-  // level 3
+  // level 4
+  {
+    path: [
+      [3, 4],
+      [2, 4],
+      [3, 3],
+      [3, 2]
+    ],
+    blocks: 8,
+    obstacle: 2,
+    switches: [1],
+    facing: "north"
+  },
+  // level 5
+  {
+    path: [
+      [3, 5],
+      [3, 4],
+      [3, 3],
+      [2, 4],
+      [3, 3],
+      [3, 2]
+    ],
+    blocks: 9,
+    obstacle: 2,
+    switches: [1, 3],
+    facing: "north"
+  },
+  // level 6
   {
     path: [
       [5, 3],
@@ -44,7 +72,7 @@ module.exports = [
     blocks: 3,
     facing: "west"
   },
-  // level 4
+  // level 7
   {
     path: [
       [1, 5],
@@ -61,7 +89,21 @@ module.exports = [
     blocks: 6,
     facing: "east"
   },
-  // level 5
+  //level 8
+  {
+    path: [
+      [3, 4],
+      [3, 3],
+      [3, 2],
+      [4, 4],
+      [5, 4]
+    ],
+    blocks: 9,
+    obstacle: 3,
+    switches: [1, 2],
+    facing: "south"
+  },
+  // level 9
   {
     path: [
       [1, 5],
@@ -77,34 +119,7 @@ module.exports = [
     blocks: 6,
     facing: "north"
   },
-  // level 6
-  {
-    path: [
-      [3, 4],
-      [2, 4],
-      [3, 3],
-      [3, 2]
-    ],
-    blocks: 8,
-    obstacle: 2,
-    switches: [1],
-    facing: "north"
-  },
-  // level 7
-  {
-    path: [
-      [3, 4],
-      [3, 3],
-      [3, 2],
-      [4, 4],
-      [5, 4]
-    ],
-    blocks: 9,
-    obstacle: 3,
-    switches: [1, 2],
-    facing: "south"
-  },
-  // level 8
+  // level 10
   {
     path: [
       [3, 3],
