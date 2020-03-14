@@ -1,0 +1,8 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl dirt
+Kd 0.9764706 0.7137255 0.4509804
+
+newmtl foliage
+Kd 0.2666667 0.7098039 0.5529412
+
