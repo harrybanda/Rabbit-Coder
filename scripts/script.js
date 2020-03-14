@@ -16,6 +16,7 @@ const obstacle = Scene.root.find("spikes");
 const switches = Scene.root.find("switches");
 const buttons = Scene.root.find("buttons");
 const goal = Scene.root.find("carrot");
+const waterEmitter = Scene.root.find("water_emitter");
 
 // Game constants
 const levels = require("./levels");
@@ -156,6 +157,7 @@ Reactive.monitorMany({
     currentState = states.complete;
     setTexture(buttons.child("btn8"), "next");
     goal.hidden = true;
+    animateLevelComplete();
 
     if (blocksUsed > maxBlocks) {
       Diagnostics.log("You can also solve this with " + maxBlocks + " blocks.");
@@ -461,7 +463,7 @@ function getNonLoopCommands() {
 
 function animatePlayerMovement(command) {
   const timeDriverParameters = {
-    durationMilliseconds: 300,
+    durationMilliseconds: 400,
     loopCount: 1,
     mirror: false
   };
@@ -591,6 +593,31 @@ function animatePlayerIdle() {
 
 animatePlayerIdle();
 
+function animateLevelComplete() {
+  const timeDriverParameters = {
+    durationMilliseconds: 450,
+    loopCount: 2,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const jump = Animation.animate(
+    timeDriver,
+    Animation.samplers.sequence({
+      samplers: [
+        Animation.samplers.easeInOutSine(playerInitY, 0.1),
+        Animation.samplers.easeInOutSine(0.1, playerInitY)
+      ],
+      knots: [0, 1, 2]
+    })
+  );
+
+  player.transform.y = jump;
+
+  timeDriver.start();
+}
+
 function animateCarrot() {
   const timeDriverParameters = {
     durationMilliseconds: 2500,
@@ -616,6 +643,12 @@ function animateCarrot() {
 animateCarrot();
 
 function animatePlayerFall() {
+  const sizeSampler = Animation.samplers.easeInQuad(0.017, 0.007);
+  waterEmitter.transform.x = player.transform.x;
+  waterEmitter.transform.z = player.transform.z;
+  waterEmitter.birthrate = 500;
+  waterEmitter.sizeModifier = sizeSampler;
+
   const timeDriverParameters = {
     durationMilliseconds: 100,
     loopCount: 1,
@@ -635,6 +668,7 @@ function animatePlayerFall() {
 
   Time.setTimeout(function() {
     player.hidden = true;
+    waterEmitter.birthrate = 0;
   }, 200);
 }
 
