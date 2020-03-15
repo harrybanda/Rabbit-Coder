@@ -18,7 +18,9 @@ const switches = Scene.root.find("switches");
 const buttons = Scene.root.find("buttons");
 const goal = Scene.root.find("carrot");
 const waterEmitter = Scene.root.find("water_emitter");
-const instructionsUI = Scene.root.find("instructions_ui");
+const instructionsView = Scene.root.find("instructions_view");
+const congratsView = Scene.root.find("congrats_view");
+const UIGroup = Scene.root.find("UI");
 
 // Sounds
 const jumpSound = Audio.getPlaybackController("jump");
@@ -44,7 +46,7 @@ const playerInitY = 0.02;
 const states = { start: 1, running: 2, complete: 3, failed: 4, uncomplete: 5 };
 
 // Game variables
-let currentLevel = 7;
+let currentLevel = 0;
 let commands = [];
 let executionCommands = [];
 let switchesAdded = [];
@@ -122,7 +124,7 @@ for (let i = 0; i < 9; i++) {
             resetLevel();
             break;
           case states.complete:
-            nextLevel();
+            nextLevel("next");
             break;
         }
         break;
@@ -147,6 +149,10 @@ TouchGestures.onTap(blocks.child("btn9")).subscribe(function() {
       setTexture(buttons.child("btn4"), "end_loop");
     }
   }
+});
+
+TouchGestures.onTap(congratsView).subscribe(function() {
+  nextLevel("back");
 });
 
 /*------------- Monitor Player Position -------------*/
@@ -178,6 +184,10 @@ Reactive.monitorMany({
     animateLevelComplete();
     completeSound.setPlaying(true);
     completeSound.reset();
+
+    if (currentLevel === 9) {
+      animateUIGroup();
+    }
 
     if (blocksUsed > maxBlocks) {
       Diagnostics.log("You can also solve this with " + maxBlocks + " blocks.");
@@ -385,11 +395,11 @@ function initLevel() {
   }
 
   if (currentLevel < 3) {
-    setTexture(instructionsUI, "in_0");
+    setTexture(instructionsView, "in_0");
   } else if (currentLevel > 4) {
-    setTexture(instructionsUI, "in_2");
+    setTexture(instructionsView, "in_2");
   } else {
-    setTexture(instructionsUI, "in_1");
+    setTexture(instructionsView, "in_1");
   }
 }
 
@@ -785,6 +795,73 @@ function animateSpikes() {
   timeDriver.start();
 }
 
+function animateUIGroup() {
+  const timeDriverParameters = {
+    durationMilliseconds: 600,
+    loopCount: 1,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const scaleUI = Animation.animate(
+    timeDriver,
+    Animation.samplers.sequence({
+      samplers: [
+        Animation.samplers.easeInOutSine(1, 1.5),
+        Animation.samplers.easeInOutSine(1.5, 0)
+      ],
+      knots: [0, 1, 2]
+    })
+  );
+
+  UIGroup.transform.scaleX = scaleUI;
+  UIGroup.transform.scaleY = scaleUI;
+
+  timeDriver.start();
+
+  Time.setTimeout(function() {
+    animateCongrats();
+  }, 700);
+}
+
+function animateCongrats() {
+  const timeDriverParameters = {
+    durationMilliseconds: 200,
+    loopCount: 1,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const scaleX = Animation.animate(
+    timeDriver,
+    Animation.samplers.sequence({
+      samplers: [
+        Animation.samplers.easeInOutSine(0, 10 + 2),
+        Animation.samplers.easeInOutSine(10 + 2, 10)
+      ],
+      knots: [0, 1, 2]
+    })
+  );
+
+  const scaleY = Animation.animate(
+    timeDriver,
+    Animation.samplers.sequence({
+      samplers: [
+        Animation.samplers.easeInOutSine(0, 7.1 + 2),
+        Animation.samplers.easeInOutSine(7.1 + 2, 7.1)
+      ],
+      knots: [0, 1, 2]
+    })
+  );
+
+  congratsView.transform.scaleX = scaleX;
+  congratsView.transform.scaleY = scaleY;
+
+  timeDriver.start();
+}
+
 /*------------- Reset current level -------------*/
 
 function resetLevel() {
@@ -822,9 +899,18 @@ function resetLevel() {
 
 /*------------- Go to next level -------------*/
 
-function nextLevel() {
-  currentLevel++;
-  if (currentLevel > levels.length - 1) currentLevel = 0;
+function nextLevel(state) {
+  if (state === "next") {
+    currentLevel++;
+  } else {
+    currentLevel = 0;
+    congratsView.transform.scaleX = 0;
+    congratsView.transform.scaleY = 0;
+    UIGroup.transform.scaleX = 1;
+    UIGroup.transform.scaleY = 1;
+    setTexture(buttons.child("btn4"), "end_loop");
+    setTexture(buttons.child("btn3"), "loop");
+  }
 
   allCoordinates = createAllCoordinates();
   pathCoordinates = createPathCoordinates();
