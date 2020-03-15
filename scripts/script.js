@@ -7,6 +7,7 @@ const Time = require("Time");
 const Reactive = require("Reactive");
 const Materials = require("Materials");
 const Textures = require("Textures");
+const Audio = require("Audio");
 
 // Game objects
 const player = Scene.root.find("bunny");
@@ -17,6 +18,17 @@ const switches = Scene.root.find("switches");
 const buttons = Scene.root.find("buttons");
 const goal = Scene.root.find("carrot");
 const waterEmitter = Scene.root.find("water_emitter");
+const instructionsUI = Scene.root.find("instructions_ui");
+
+// Sounds
+const jumpSound = Audio.getPlaybackController("jump");
+const dropSound = Audio.getPlaybackController("drop");
+const failSound = Audio.getPlaybackController("fail");
+const completeSound = Audio.getPlaybackController("complete");
+const clickSound = Audio.getPlaybackController("click");
+const switchSound = Audio.getPlaybackController("switch");
+const spikesSound = Audio.getPlaybackController("spikes_off");
+const removeSound = Audio.getPlaybackController("remove");
 
 // Game constants
 const levels = require("./levels");
@@ -32,7 +44,7 @@ const playerInitY = 0.02;
 const states = { start: 1, running: 2, complete: 3, failed: 4, uncomplete: 5 };
 
 // Game variables
-let currentLevel = 0;
+let currentLevel = 7;
 let commands = [];
 let executionCommands = [];
 let switchesAdded = [];
@@ -47,6 +59,7 @@ let exeIntervalID;
 let obstacleActivated = true;
 let loopAdded = false;
 let endLoopAdded = false;
+let obstacleRemoved = false;
 let activateLoopFunctionality = false;
 let allCoordinates = createAllCoordinates();
 let pathCoordinates = createPathCoordinates();
@@ -94,9 +107,13 @@ for (let i = 0; i < 9; i++) {
         break;
       case 8:
         // Call a different function based on current game state
+        clickSound.setPlaying(true);
+        clickSound.reset();
         switch (currentState) {
           case states.start:
-            if (commands.length !== 0) executeCommands();
+            Time.setTimeout(function() {
+              if (commands.length !== 0) executeCommands();
+            }, 300);
             break;
           case states.failed:
             resetLevel();
@@ -114,6 +131,8 @@ for (let i = 0; i < 9; i++) {
 }
 TouchGestures.onTap(blocks.child("btn9")).subscribe(function() {
   // Remove the last command
+  removeSound.setPlaying(true);
+  removeSound.reset();
   if (blocksUsed !== 0 && currentState === states.start) {
     let popped = commands.pop();
     popped.block.transform.y = blockInitY;
@@ -154,10 +173,11 @@ Reactive.monitorMany({
     commands = [];
     executionCommands = [];
     Time.clearInterval(exeIntervalID);
-    currentState = states.complete;
-    setTexture(buttons.child("btn8"), "next");
+    changeState(states.complete, "next");
     goal.hidden = true;
     animateLevelComplete();
+    completeSound.setPlaying(true);
+    completeSound.reset();
 
     if (blocksUsed > maxBlocks) {
       Diagnostics.log("You can also solve this with " + maxBlocks + " blocks.");
@@ -177,9 +197,10 @@ Reactive.monitorMany({
       commands = [];
       executionCommands = [];
       Time.clearInterval(exeIntervalID);
-      currentState = states.failed;
-      setTexture(buttons.child("btn8"), "retry");
+      changeState(states.failed, "retry");
       animatePlayerFall();
+      dropSound.setPlaying(true);
+      dropSound.reset();
     }
   }
 
@@ -206,9 +227,10 @@ Reactive.monitorMany({
       commands = [];
       executionCommands = [];
       Time.clearInterval(exeIntervalID);
-      currentState = states.failed;
-      setTexture(buttons.child("btn8"), "retry");
+      changeState(states.failed, "retry");
       animatePlayerSpikeDeath();
+      failSound.setPlaying(true);
+      failSound.reset();
     }
 
     // Check if player is on a switch
@@ -224,13 +246,29 @@ Reactive.monitorMany({
         let s = switches.child("switch" + i);
         s.child("button").child("knob").transform.z = 0;
         player.transform.y = playerInitY + 0.015;
+        if (
+          s
+            .child("button")
+            .child("knob")
+            .transform.z.pinLastValue() !== 0
+        ) {
+          switchSound.setPlaying(true);
+          switchSound.reset();
+        }
       }
     }
 
     // Remove obstacle if all switches are deactivated
     if (switchesAdded.every(val => val.activated === true)) {
       obstacleActivated = false;
-      animateSpikes();
+      if (!obstacleRemoved) {
+        obstacleRemoved = true;
+        animateSpikes();
+        Time.setTimeout(function() {
+          spikesSound.setPlaying(true);
+          spikesSound.reset();
+        }, 100);
+      }
     }
   }
 });
@@ -345,6 +383,14 @@ function initLevel() {
     setTexture(buttons.child("btn6"), "loop_3");
     setTexture(buttons.child("btn7"), "loop_4");
   }
+
+  if (currentLevel < 3) {
+    setTexture(instructionsUI, "in_0");
+  } else if (currentLevel > 4) {
+    setTexture(instructionsUI, "in_2");
+  } else {
+    setTexture(instructionsUI, "in_1");
+  }
 }
 
 initLevel();
@@ -360,6 +406,8 @@ function addCommand(move) {
       block.material = Materials.get(move + "_block_mat");
       block.hidden = false;
       commands.push({ command: move, block: block });
+      clickSound.setPlaying(true);
+      clickSound.reset();
     }
   }
 }
@@ -409,6 +457,8 @@ function setExecutionInterval(callback, delay, repetitions) {
       Time.clearInterval(exeIntervalID);
       if (currentState === states.running) currentState = states.uncomplete;
       setTexture(buttons.child("btn8"), "retry");
+      failSound.setPlaying(true);
+      failSound.reset();
     }
   }, delay);
 }
@@ -533,6 +583,8 @@ function animatePlayerMovement(command) {
   switch (command) {
     case "forward":
       player.transform.y = jump;
+      jumpSound.setPlaying(true);
+      jumpSound.reset();
       if (playerDir === "east") {
         player.transform.x = translationPosX;
       } else if (playerDir === "north") {
@@ -642,13 +694,21 @@ function animateCarrot() {
 
 animateCarrot();
 
-function animatePlayerFall() {
+function emmitWaterParticles() {
   const sizeSampler = Animation.samplers.easeInQuad(0.015, 0.007);
   waterEmitter.transform.x = player.transform.x;
   waterEmitter.transform.z = player.transform.z;
   waterEmitter.birthrate = 500;
   waterEmitter.sizeModifier = sizeSampler;
 
+  Time.setTimeout(function() {
+    player.hidden = true;
+    waterEmitter.birthrate = 0;
+  }, 200);
+}
+
+function animatePlayerFall() {
+  emmitWaterParticles();
   const timeDriverParameters = {
     durationMilliseconds: 100,
     loopCount: 1,
@@ -666,9 +726,8 @@ function animatePlayerFall() {
 
   timeDriver.start();
 
-  Time.setTimeout(function() { 
+  Time.setTimeout(function() {
     player.hidden = true;
-    waterEmitter.birthrate = 0;
   }, 200);
 }
 
@@ -743,6 +802,7 @@ function resetLevel() {
   loopAdded = false;
   endLoopAdded = false;
   player.hidden = false;
+  obstacleRemoved = false;
   setTexture(buttons.child("btn8"), "play");
   Time.clearInterval(exeIntervalID);
 
@@ -808,6 +868,10 @@ function setTexture(object, texture) {
 }
 
 function setLoopIterations(i) {
+  if (activateLoopFunctionality === true) {
+    clickSound.setPlaying(true);
+    clickSound.reset();
+  }
   if (
     findCommandIndex("loop_") !== undefined &&
     activateLoopFunctionality === true
@@ -829,4 +893,11 @@ function findCommandIndex(command) {
     }
   }
   return index;
+}
+
+function changeState(state, buttonText) {
+  Time.setTimeout(function() {
+    currentState = state;
+    setTexture(buttons.child("btn8"), buttonText);
+  }, 500);
 }
