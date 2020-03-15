@@ -643,7 +643,7 @@ function animateCarrot() {
 animateCarrot();
 
 function animatePlayerFall() {
-  const sizeSampler = Animation.samplers.easeInQuad(0.017, 0.007);
+  const sizeSampler = Animation.samplers.easeInQuad(0.015, 0.007);
   waterEmitter.transform.x = player.transform.x;
   waterEmitter.transform.z = player.transform.z;
   waterEmitter.birthrate = 500;
@@ -666,7 +666,7 @@ function animatePlayerFall() {
 
   timeDriver.start();
 
-  Time.setTimeout(function() {
+  Time.setTimeout(function() { 
     player.hidden = true;
     waterEmitter.birthrate = 0;
   }, 200);
