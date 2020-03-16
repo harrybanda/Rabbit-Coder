@@ -8,6 +8,8 @@ const Reactive = require("Reactive");
 const Materials = require("Materials");
 const Textures = require("Textures");
 const Audio = require("Audio");
+const Instruction = require("Instruction");
+const CameraInfo = require("CameraInfo");
 
 // Game objects
 const player = Scene.root.find("bunny");
@@ -64,9 +66,21 @@ let loopAdded = false;
 let endLoopAdded = false;
 let obstacleRemoved = false;
 let activateLoopFunctionality = false;
+let isFirstRun = true;
 let allCoordinates = createAllCoordinates();
 let pathCoordinates = createPathCoordinates();
 let dangerCoordinates = createDangerCoordinates();
+
+CameraInfo.captureDevicePosition
+  .monitor({ fireOnInitialValue: true })
+  .subscribe(function(e) {
+    Diagnostics.log(e.newValue);
+    if (e.newValue === "FRONT") {
+      Instruction.bind(true, "switch_camera_view_to_place");
+    } else {
+      Instruction.bind(false, "switch_camera_view_to_place");
+    }
+  });
 
 /*------------- Button Taps -------------*/
 
@@ -153,6 +167,7 @@ TouchGestures.onTap(blocks.child("btn9")).subscribe(function() {
 });
 
 TouchGestures.onTap(congratsView).subscribe(function() {
+  isFirstRun = false;
   nextLevel("back");
 });
 
@@ -191,13 +206,10 @@ Reactive.monitorMany({
     }
 
     if (currentLevel === 0) {
-      setTexture(instructionsView, "in_0");
       animateInstructionsViewHide();
     } else if (currentLevel === 3) {
-      setTexture(instructionsView, "in_1");
       animateInstructionsViewHide();
     } else if (currentLevel === 5) {
-      setTexture(instructionsView, "in_2");
       animateInstructionsViewHide();
     }
 
@@ -409,7 +421,9 @@ function initLevel() {
   Time.setTimeout(function() {
     if (currentLevel === 0) {
       setTexture(instructionsView, "in_0");
-      animateInstructionsViewShow();
+      if (!isFirstRun) {
+        animateInstructionsViewShow();
+      }
     } else if (currentLevel === 3) {
       setTexture(instructionsView, "in_1");
       animateInstructionsViewShow();
