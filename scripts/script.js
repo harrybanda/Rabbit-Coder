@@ -31,6 +31,7 @@ const clickSound = Audio.getPlaybackController("click");
 const switchSound = Audio.getPlaybackController("switch");
 const spikesSound = Audio.getPlaybackController("spikes_off");
 const removeSound = Audio.getPlaybackController("remove");
+const popSound = Audio.getPlaybackController("pop");
 
 // Game constants
 const levels = require("./levels");
@@ -187,6 +188,17 @@ Reactive.monitorMany({
 
     if (currentLevel === 9) {
       animateUIGroup();
+    }
+
+    if (currentLevel === 0) {
+      setTexture(instructionsView, "in_0");
+      animateInstructionsViewHide();
+    } else if (currentLevel === 3) {
+      setTexture(instructionsView, "in_1");
+      animateInstructionsViewHide();
+    } else if (currentLevel === 5) {
+      setTexture(instructionsView, "in_2");
+      animateInstructionsViewHide();
     }
 
     if (blocksUsed > maxBlocks) {
@@ -394,13 +406,18 @@ function initLevel() {
     setTexture(buttons.child("btn7"), "loop_4");
   }
 
-  if (currentLevel < 3) {
-    setTexture(instructionsView, "in_0");
-  } else if (currentLevel > 4) {
-    setTexture(instructionsView, "in_2");
-  } else {
-    setTexture(instructionsView, "in_1");
-  }
+  Time.setTimeout(function() {
+    if (currentLevel === 0) {
+      setTexture(instructionsView, "in_0");
+      animateInstructionsViewShow();
+    } else if (currentLevel === 3) {
+      setTexture(instructionsView, "in_1");
+      animateInstructionsViewShow();
+    } else if (currentLevel === 5) {
+      setTexture(instructionsView, "in_2");
+      animateInstructionsViewShow();
+    }
+  }, 1000);
 }
 
 initLevel();
@@ -808,8 +825,8 @@ function animateUIGroup() {
     timeDriver,
     Animation.samplers.sequence({
       samplers: [
-        Animation.samplers.easeInOutSine(1, 1.5),
-        Animation.samplers.easeInOutSine(1.5, 0)
+        Animation.samplers.easeInOutSine(0.3, 0.45),
+        Animation.samplers.easeInOutSine(0.45, 0)
       ],
       knots: [0, 1, 2]
     })
@@ -826,6 +843,8 @@ function animateUIGroup() {
 }
 
 function animateCongrats() {
+  popSound.setPlaying(true);
+  popSound.reset();
   const timeDriverParameters = {
     durationMilliseconds: 200,
     loopCount: 1,
@@ -838,8 +857,8 @@ function animateCongrats() {
     timeDriver,
     Animation.samplers.sequence({
       samplers: [
-        Animation.samplers.easeInOutSine(0, 10 + 2),
-        Animation.samplers.easeInOutSine(10 + 2, 10)
+        Animation.samplers.easeInOutSine(0, 4 + 1),
+        Animation.samplers.easeInOutSine(4 + 1, 4)
       ],
       knots: [0, 1, 2]
     })
@@ -849,8 +868,8 @@ function animateCongrats() {
     timeDriver,
     Animation.samplers.sequence({
       samplers: [
-        Animation.samplers.easeInOutSine(0, 7.1 + 2),
-        Animation.samplers.easeInOutSine(7.1 + 2, 7.1)
+        Animation.samplers.easeInOutSine(0, 2.8 + 1),
+        Animation.samplers.easeInOutSine(2.8 + 1, 2.8)
       ],
       knots: [0, 1, 2]
     })
@@ -858,6 +877,60 @@ function animateCongrats() {
 
   congratsView.transform.scaleX = scaleX;
   congratsView.transform.scaleY = scaleY;
+
+  timeDriver.start();
+}
+
+function animateInstructionsViewHide() {
+  const timeDriverParameters = {
+    durationMilliseconds: 200,
+    loopCount: 1,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const scale = Animation.animate(
+    timeDriver,
+    Animation.samplers.sequence({
+      samplers: [
+        Animation.samplers.easeInOutSine(10, 10 + 2),
+        Animation.samplers.easeInOutSine(10 + 2, 0)
+      ],
+      knots: [0, 1, 2]
+    })
+  );
+
+  instructionsView.transform.scaleX = scale;
+  instructionsView.transform.scaleY = scale;
+
+  timeDriver.start();
+}
+
+function animateInstructionsViewShow() {
+  popSound.setPlaying(true);
+  popSound.reset();
+  const timeDriverParameters = {
+    durationMilliseconds: 200,
+    loopCount: 1,
+    mirror: false
+  };
+
+  const timeDriver = Animation.timeDriver(timeDriverParameters);
+
+  const scale = Animation.animate(
+    timeDriver,
+    Animation.samplers.sequence({
+      samplers: [
+        Animation.samplers.easeInOutSine(0, 10 + 2),
+        Animation.samplers.easeInOutSine(10 + 2, 10)
+      ],
+      knots: [0, 1, 2]
+    })
+  );
+
+  instructionsView.transform.scaleX = scale;
+  instructionsView.transform.scaleY = scale;
 
   timeDriver.start();
 }
@@ -906,8 +979,8 @@ function nextLevel(state) {
     currentLevel = 0;
     congratsView.transform.scaleX = 0;
     congratsView.transform.scaleY = 0;
-    UIGroup.transform.scaleX = 1;
-    UIGroup.transform.scaleY = 1;
+    UIGroup.transform.scaleX = 0.3;
+    UIGroup.transform.scaleY = 0.3;
     setTexture(buttons.child("btn4"), "end_loop");
     setTexture(buttons.child("btn3"), "loop");
   }
