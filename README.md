@@ -8,5 +8,5 @@ git clone https://github.com/harrybanda/Rabbit-Coder.git
 ```
 
 ```sh
-Open project in Spark AR Studio
+Open project with Spark AR Studio
 ```
