@@ -74,13 +74,17 @@ let dangerCoordinates = createDangerCoordinates();
 CameraInfo.captureDevicePosition
   .monitor({ fireOnInitialValue: true })
   .subscribe(function(e) {
-    Diagnostics.log(e.newValue);
     if (e.newValue === "FRONT") {
       Instruction.bind(true, "switch_camera_view_to_place");
     } else {
       Instruction.bind(false, "switch_camera_view_to_place");
+      Instruction.bind(true, "effect_include_sound");
     }
   });
+
+Time.setTimeout(function() {
+  Instruction.bind(false, "effect_include_sound");
+}, 5000);
 
 /*------------- Button Taps -------------*/
 
